@@ -199,6 +199,27 @@ class Game {
                     bot.target ? distance3D(bot.position, bot.target.position) : 0,
                     gameState
                 );
+
+                // Create tracer from bot's gun position
+                if (bot.weapon && bot.weapon.lastFireTime === time) {
+                    const gunWorldPos = new THREE.Vector3();
+                    bot.gunMesh.getWorldPosition(gunWorldPos);
+                    // Aim direction from bot's look angles
+                    const aimDir = new THREE.Vector3(
+                        Math.sin(bot.lookYaw) * Math.cos(bot.lookPitch),
+                        Math.sin(bot.lookPitch),
+                        Math.cos(bot.lookYaw) * Math.cos(bot.lookPitch)
+                    );
+                    let tracerEnd;
+                    if (hitInfo && hitInfo.target) {
+                        tracerEnd = hitInfo.target.position.clone();
+                        tracerEnd.y = GAME_CONSTANTS.PLAYER_HEIGHT * 0.7;
+                    } else {
+                        tracerEnd = gunWorldPos.clone().add(aimDir.multiplyScalar(40));
+                    }
+                    this._createTracer(gunWorldPos, tracerEnd);
+                }
+
                 if (hitInfo) {
                     this._applyDamage(hitInfo.target, hitInfo.damage, bot, hitInfo.headshot);
                 }
@@ -367,7 +388,7 @@ class Game {
         const killed = target.takeDamage(damage, attacker.name);
 
         if (target === this.player) {
-            this.hud.showDamage();
+            this.hud.showDamage(attacker.position, this.player.position, this.player.rotation.yaw);
         }
 
         if (killed) {
