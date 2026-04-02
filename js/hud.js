@@ -23,10 +23,12 @@ class HUD {
         this.hudElement = document.getElementById('hud');
 
         this.spawnProtection = document.getElementById('spawn-protection');
+        this.hitDirContainer = document.getElementById('hit-direction-container');
 
         this.killfeedEntries = [];
         this.hitMarkerTimer = 0;
         this.damageTimer = 0;
+        this.hitDirectionIndicators = []; // {angle, timer}
     }
 
     show() {
@@ -110,16 +112,46 @@ class HUD {
             this.damageOverlay.style.border = '0px solid rgba(255,0,0,0)';
         }
 
-        // Clean old killfeed entries
-        this.killfeedEntries = this.killfeedEntries.filter(e => e.time > performance.now() - 5000);
+        // Directional hit indicators
+        for (let i = this.hitDirectionIndicators.length - 1; i >= 0; i--) {
+            const ind = this.hitDirectionIndicators[i];
+            ind.timer -= dt;
+            if (ind.timer <= 0) {
+                if (ind.el && ind.el.parentNode) ind.el.parentNode.removeChild(ind.el);
+                this.hitDirectionIndicators.splice(i, 1);
+            } else {
+                // Create DOM element if needed
+                if (!ind.el) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'hit-direction';
+                    const arc = document.createElement('div');
+                    arc.className = 'hit-direction-arc';
+                    wrapper.appendChild(arc);
+                    this.hitDirContainer.appendChild(wrapper);
+                    ind.el = wrapper;
+                    ind.arcEl = arc;
+                }
+                const rotDeg = (ind.angle * 180 / Math.PI) + 180;
+                ind.arcEl.style.transform = `rotate(${rotDeg}deg)`;
+                ind.arcEl.style.opacity = Math.min(1, ind.timer / 0.3);
+            }
+        }
+
+        // Clean old killfeed entries (longer display time for chat log feel)
+        this.killfeedEntries = this.killfeedEntries.filter(e => e.time > performance.now() - 8000);
         let feedHTML = '';
         for (const entry of this.killfeedEntries) {
-            const opacity = Math.min(1, (5000 - (performance.now() - entry.time)) / 1000);
-            feedHTML += `<div class="kill-entry" style="opacity:${opacity}">
+            const age = performance.now() - entry.time;
+            const opacity = age < 6000 ? 1 : Math.max(0, (8000 - age) / 2000);
+            const isPlayerKill = entry.killer === 'Player';
+            const isPlayerDeath = entry.victim === 'Player';
+            const highlight = isPlayerKill ? 'border-right-color:rgba(68,255,68,0.8);background:rgba(0,60,0,0.5);' :
+                              isPlayerDeath ? 'border-right-color:rgba(255,68,68,0.8);background:rgba(60,0,0,0.5);' : '';
+            const hsIcon = entry.headshot ? '<span style="color:#ffdd44;margin-left:4px;" title="Headshot">&#9733;</span>' : '';
+            feedHTML += `<div class="kill-entry" style="opacity:${opacity};${highlight}">
                 <span class="killer">${entry.killer}</span>
                 <span class="weapon-icon">[${entry.weapon}]</span>
-                <span class="victim">${entry.victim}</span>
-                ${entry.headshot ? ' &#9733;' : ''}
+                <span class="victim">${entry.victim}</span>${hsIcon}
             </div>`;
         }
         this.killfeed.innerHTML = feedHTML;
@@ -132,8 +164,22 @@ class HUD {
         this.hitMarkerTimer = 0.2;
     }
 
-    showDamage() {
+    showDamage(attackerPos, playerPos, playerYaw) {
         this.damageTimer = 0.5;
+
+        // Calculate directional indicator
+        if (attackerPos && playerPos) {
+            const dx = attackerPos.x - playerPos.x;
+            const dz = attackerPos.z - playerPos.z;
+            // Angle from player to attacker in world space
+            const worldAngle = Math.atan2(dx, dz);
+            // Relative to player's facing direction
+            const relAngle = worldAngle - (playerYaw || 0);
+            this.hitDirectionIndicators.push({ angle: relAngle, timer: 1.0 });
+            if (this.hitDirectionIndicators.length > 4) {
+                this.hitDirectionIndicators.shift();
+            }
+        }
     }
 
     addKillfeedEntry(killer, victim, weapon, headshot) {
@@ -141,7 +187,7 @@ class HUD {
             killer, victim, weapon, headshot,
             time: performance.now()
         });
-        if (this.killfeedEntries.length > 5) {
+        if (this.killfeedEntries.length > 8) {
             this.killfeedEntries.shift();
         }
     }
