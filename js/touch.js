@@ -23,7 +23,7 @@ class TouchControls {
         this._joystickOrigin = { x: 0, y: 0 };
         this._lastLookPos = { x: 0, y: 0 };
 
-        this.lookSensitivity = 10;
+        this.lookSensitivity = 2;
 
         // DOM
         this.container = null;
@@ -96,7 +96,7 @@ class TouchControls {
         canvas.addEventListener('touchcancel', (e) => this._onLookEnd(e), { passive: false });
 
         // Buttons
-        this._bindButton('touch-fire', 'fireDown');
+        this._bindFireLook();
         this._bindButton('touch-crouch', 'crouchDown');
         this._bindButton('touch-score', 'scoreboardDown');
         this._bindPulse('touch-jump', 'jumpPressed');
@@ -139,6 +139,49 @@ class TouchControls {
             // Pulse props are consumed by the player and reset
         }, { passive: false });
         el.addEventListener('touchcancel', (e) => {
+            el.classList.remove('pressed');
+        }, { passive: false });
+    }
+
+    // --- Fire button: fires on touch and acts as look joystick on drag ---
+    _bindFireLook() {
+        const el = document.getElementById('touch-fire');
+        el.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const touch = e.changedTouches[0];
+            this.fireDown = true;
+            this._lookTouch = touch.identifier;
+            this._lastLookPos.x = touch.clientX;
+            this._lastLookPos.y = touch.clientY;
+            el.classList.add('pressed');
+        }, { passive: false });
+        el.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            for (const touch of e.changedTouches) {
+                if (touch.identifier === this._lookTouch) {
+                    this.lookDeltaX += (touch.clientX - this._lastLookPos.x) * this.lookSensitivity;
+                    this.lookDeltaY += (touch.clientY - this._lastLookPos.y) * this.lookSensitivity;
+                    this._lastLookPos.x = touch.clientX;
+                    this._lastLookPos.y = touch.clientY;
+                }
+            }
+        }, { passive: false });
+        el.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            for (const touch of e.changedTouches) {
+                if (touch.identifier === this._lookTouch) {
+                    this.fireDown = false;
+                    this._lookTouch = null;
+                    el.classList.remove('pressed');
+                }
+            }
+        }, { passive: false });
+        el.addEventListener('touchcancel', (e) => {
+            this.fireDown = false;
+            this._lookTouch = null;
             el.classList.remove('pressed');
         }, { passive: false });
     }
