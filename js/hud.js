@@ -133,7 +133,7 @@ class HUD {
                 }
                 const rotDeg = (ind.angle * 180 / Math.PI) + 180;
                 ind.arcEl.style.transform = `rotate(${rotDeg}deg)`;
-                ind.arcEl.style.opacity = Math.min(1, ind.timer / 0.3);
+                ind.arcEl.style.opacity = Math.min(1, ind.timer / 1.0);
             }
         }
 
@@ -175,7 +175,7 @@ class HUD {
             const worldAngle = Math.atan2(dx, dz);
             // Relative to player's facing direction
             const relAngle = worldAngle - (playerYaw || 0);
-            this.hitDirectionIndicators.push({ angle: relAngle, timer: 1.0 });
+            this.hitDirectionIndicators.push({ angle: relAngle, timer: 3.0 });
             if (this.hitDirectionIndicators.length > 4) {
                 this.hitDirectionIndicators.shift();
             }
