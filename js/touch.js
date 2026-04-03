@@ -23,7 +23,7 @@ class TouchControls {
         this._joystickOrigin = { x: 0, y: 0 };
         this._lastLookPos = { x: 0, y: 0 };
 
-        this.lookSensitivity = 1.05;
+        this.lookSensitivity = 10;
 
         // DOM
         this.container = null;
